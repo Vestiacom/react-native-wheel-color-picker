@@ -5,31 +5,15 @@ const React = require('react'), { Component } = React
 const {
 	Animated,
 	Image,
-	Dimensions,
 	PanResponder,
 	StyleSheet,
 	TouchableWithoutFeedback,
 	View,
-	Text,
 } = require('react-native')
 
 const Elevations = require('react-native-elevation')
 const srcWheel = require('./assets/graphics/ui/color-wheel.png')
-const srcSlider = require('./assets/graphics/ui/black-gradient.png')
-const srcSliderRotated = require('./assets/graphics/ui/black-gradient-rotated.png')
-
-const PALETTE = [
-	'#000000',
-	'#888888',
-	'#ed1c24',
-	'#d11cd5',
-	'#1633e6',
-	'#00aeef',
-	'#00c85d',
-	'#57ff0a',
-	'#ffde17',
-	'#f26522',
-]
+const srcWhitesWheel = require('./assets/graphics/ui/whites-wheel.png')
 
 const RGB_MAX = 255
 const HUE_MAX = 360
@@ -143,6 +127,52 @@ const hex2Hsv = (hex) => {
 	return rgb2Hsv(rgb.r, rgb.g, rgb.b)
 }
 
+const kelvinToRgb = (kelvin) => {
+	var temp = kelvin / 100;
+	var r, g, b;
+
+	if (temp < 66) {
+		r = 255;
+		g = -155.25485562709179 - 0.44596950469579133 * (g = temp - 2) + 104.49216199393888 * Math.log(g);
+		b = temp < 20 ? 0 : -254.76935184120902 + 0.8274096064007395 * (b = temp - 10) + 115.67994401066147 * Math.log(b);
+	} else {
+		r = 351.97690566805693 + 0.114206453784165 * (r = temp - 55) - 40.25366309332127 * Math.log(r);
+		g = 325.4494125711974 + 0.07943456536662342 * (g = temp - 50) - 28.0852963507957 * Math.log(g);
+		b = 255;
+	}
+
+	return {
+		r: clamp(Math.floor(r), 0, 255),
+		g: clamp(Math.floor(g), 0, 255),
+		b: clamp(Math.floor(b), 0, 255)
+	};
+}
+
+const rgbToKelvin = (rgb, minTemp, maxTemp) => {
+	var r = rgb.r,
+		b = rgb.b;
+	var eps = 0.4;
+	var temp;
+
+	while (maxTemp - minTemp > eps) {
+		temp = (maxTemp + minTemp) * 0.5;
+
+		var _rgb = kelvinToRgb(temp);
+
+		if (_rgb.b / _rgb.r >= b / r) {
+			maxTemp = temp;
+		} else {
+			minTemp = temp;
+		}
+	}
+
+	return temp;
+};
+
+const clamp = (num, min, max) => {
+	return Math.min(Math.max(num, min), max);
+}
+
 // expands hex to full 6 chars (#fff -> #ffffff) if necessary
 const expandColor = color => typeof color == 'string' && color.length === 4
 	? `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
@@ -163,6 +193,7 @@ module.exports = class ColorPicker extends Component {
 	wheelMeasure = {}
 	wheelWidth = 0
 	static defaultProps = {
+		whitesMode: false,
 		row: false, // use row or vertical layout
 		noSnap: false, // enables snapping on the center of wheel and edges of wheel and slider
 		thumbSize: 50, // wheel color thumb size
@@ -175,8 +206,10 @@ module.exports = class ColorPicker extends Component {
 		swatchesLast: true, // if false swatches are shown before wheel
 		swatchesOnly: false, // show swatch only and hide wheel and slider
 		swatchesHitSlop: undefined, // defines how far the touch event can start away from the swatch
-		color: '#ffffff', //  color of the color picker
-		palette: PALETTE, // palette colors of swatches
+		color: {h: 0, s: 0, v: 100}, //  color of the color picker
+		palette: [], // palette colors of swatches
+		minTemperature: 0,
+		maxTemperature: 0,
 		shadeWheelThumb: true, // if true the wheel thumb color is shaded
 		shadeSliderThumb: false, // if true the slider thumb color is shaded
 		autoResetSlider: false, // if true the slider thumb is reset to 0 value when wheel thumb is moved
@@ -217,7 +250,7 @@ module.exports = class ColorPicker extends Component {
 			const {h,s,v} = hsv
 			if (!this.props.noSnap && radius <= 0.10 && radius >= 0) this.animate('#ffffff', 'hs', false, true)
 			if (!this.props.noSnap && radius >= 0.95 && radius <= 1) this.animate(this.state.currentColor, 'hs', true)
-			if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(hsv2Hex(hsv))
+			if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv))
 			this.setState({currentColor:this.state.currentColor}, x=>this.renderDiscs())
 		},
 	})
@@ -254,7 +287,7 @@ module.exports = class ColorPicker extends Component {
 			const ratio = this.ratio(nativeEvent)
 			if (!this.props.noSnap && ratio <= 0.05 && ratio >= 0) this.animate(this.state.currentColor, 'v', false)
 			if (!this.props.noSnap && ratio >= 0.95 && ratio <= 1) this.animate(this.state.currentColor, 'v', true)
-			if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(hsv2Hex(hsv))
+			if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv))
 		},
 	})
 	constructor (props) {
@@ -264,7 +297,7 @@ module.exports = class ColorPicker extends Component {
 			wheelOpacity: 0,
 			sliderOpacity: 0,
 			hueSaturation: hsv2Hex(this.color.h,this.color.s,100),
-			currentColor: props.color,
+			currentColor: this.parseIncomingColor(props.color),
 			hsv: {h:0,s:0,v:100},
 		}
 		this.wheelMovement = new Animated.event(
@@ -333,8 +366,8 @@ module.exports = class ColorPicker extends Component {
 		this.animate({h:this.color.h,s:this.color.s,v:val}, 'v')
 	}
 	onSquareLayout = (e) => {
-		let {x, y, width, height} = e.nativeEvent.layout
-		this.wheelWidth = Math.min(width, height)
+		let {x, y, width } = e.nativeEvent.layout
+		this.wheelWidth = width
 		this.tryForceUpdate()
 	}
 	onWheelLayout = (e) => {
@@ -387,7 +420,7 @@ module.exports = class ColorPicker extends Component {
 		const row = this.props.row
 		const loc = row ? nativeEvent.locationY : nativeEvent.locationX
 		const {width,height} = this.sliderMeasure
-		return 1 - (loc / (row ? height-width : width-height))
+		return loc / (row ? height-width : width-height)
 	}
 	polar (nativeEvent) {
 		const lx = nativeEvent.locationX, ly = nativeEvent.locationY
@@ -407,24 +440,56 @@ module.exports = class ColorPicker extends Component {
 			top: this.wheelSize / 2 - y,
 		}
 	}
+	parseIncomingColor (hsv) {
+		if(this.props.whitesMode) {
+			const kelvins = rgbToKelvin(hsv2Rgb(hsv.h, hsv.s, hsv.v), this.props.minTemperature, this.props.maxTemperature)
+			const tempRange = this.props.maxTemperature - this.props.minTemperature;
+
+			if(kelvins >= (this.props.minTemperature + tempRange/2)) {
+				const percentage = ((kelvins - this.props.minTemperature - tempRange/2) / (tempRange/2)) * 100
+				return {h: 90, s: percentage, v: hsv.v};
+			} else {
+				const percentage = 100 - ((kelvins - this.props.minTemperature) / (tempRange/2)) * 100
+				return {h: -90, s: percentage, v: hsv.v};
+			}
+		} else {
+			return hsv
+		}
+	}
+	prepareFinalHsvColor (hsv) {
+		if(this.props.whitesMode) {
+			const tempRange = this.props.maxTemperature - this.props.minTemperature;
+			let rgb = {
+				r: 0,
+				g: 0,
+				b: 0
+			}
+			if(hsv.h >= 0) {
+				rgb = kelvinToRgb(this.props.minTemperature + tempRange/2 + hsv.s * (tempRange/2 / 100));
+			} else {
+				rgb = kelvinToRgb(this.props.minTemperature + (100 - hsv.s) * (tempRange/2 / 100));
+			}
+			const currHsv = {...rgb2Hsv(rgb.r, rgb.g, rgb.b), v: Math.round(hsv.v)};
+			return {hsv: currHsv, hex: hsv2Hex(currHsv.h, currHsv.s, currHsv.v)};
+		} else {
+			const hex = hsv2Hex(hsv.h, hsv.s, hsv.v)
+			return {hsv: hex2Hsv(hex), hex};
+		}
+	}
+
 	updateHueSaturation = ({nativeEvent}) => {
 		const {deg, radius} = this.polar(nativeEvent), h = deg, s = 100 * radius, v = this.color.v
 		// if(radius > 1 ) return
 		const hsv = {h,s,v}// v: 100} // causes bug
 		if(this.props.autoResetSlider === true) {
-			this.slideX.setValue(0)
-			this.slideY.setValue(0)
+			this.slideX.setValue(this.sliderLength)
+			this.slideY.setValue(this.sliderLength)
 			hsv.v = 100
 		}
 		const currentColor = hsv2Hex(hsv)
 		this.color = hsv
 		this.setState({hsv, currentColor, hueSaturation: hsv2Hex(this.color.h,this.color.s,100)})
 		this.props.onColorChange(hsv2Hex(hsv))
-		// this.testData.deg = deg
-		// this.testData.radius = radius
-		// this.testData.pan = JSON.stringify({x:this.panX,y:this.panY})
-		// this.testData.pan = JSON.stringify(this.state.pan.getTranslateTransform())
-		// this.testView.forceUpdate()
 	}
 	updateValue = ({nativeEvent}, val) => {
 		const {h,s} = this.color, v = (typeof val == 'number') ? val : 100 * this.ratio(nativeEvent)
@@ -435,15 +500,13 @@ module.exports = class ColorPicker extends Component {
 		this.props.onColorChange(hsv2Hex(hsv))
 	}
 	update = (color, who, max, force) => {
-		const isHex = /^#(([0-9a-f]{2}){3}|([0-9a-f]){3})$/i
-		if (!isHex.test(color)) color = '#ffffff'
 		color = expandColor(color);
 		const specific = (typeof who == 'string'), who_hs = (who=='hs'), who_v = (who=='v')
 		let {h, s, v} = (typeof color == 'string') ? hex2Hsv(color) : color, stt = {}
 		h = (who_hs||!specific) ? h : this.color.h
 		s = (who_hs && max) ? 100 : (who_hs && max===false) ? 0 : (who_hs||!specific) ? s : this.color.s
 		v = (who_v && max) ? 100 : (who_v && max===false) ? 0 : (who_v||!specific) ? v : this.color.v
-		const range = (100 - v) / 100 * this.sliderLength
+		const range = v / 100 * this.sliderLength
 		const {left, top} = this.cartesian(h, s / 100)
 		const hsv = {h,s,v}
 		if(!specific||force) {
@@ -455,7 +518,7 @@ module.exports = class ColorPicker extends Component {
 		this.setState(stt, x=>{ this.tryForceUpdate(); this.renderDiscs(); })
 		// this.setState({currentColor:hsv2Hex(hsv)}, x=>this.tryForceUpdate())
 		this.props.onColorChange(hsv2Hex(hsv))
-		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(hsv2Hex(hsv))
+		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv))
 		if(who_hs||!specific) {
 			this.panY.setValue(top)// - this.props.thumbSize / 2)
 			this.panX.setValue(left)// - this.props.thumbSize / 2)
@@ -472,7 +535,7 @@ module.exports = class ColorPicker extends Component {
 		h = (who_hs||!specific) ? h : this.color.h
 		s = (who_hs && max) ? 100 : (who_hs && max===false) ? 0 : (who_hs||!specific) ? s : this.color.s
 		v = (who_v && max) ? 100 : (who_v && max===false) ? 0 : (who_v||!specific) ? v : this.color.v
-		const range = (100 - v) / 100 * this.sliderLength
+		const range = v / 100 * this.sliderLength
 		const {left, top} = this.cartesian(h, s / 100)
 		const hsv = {h,s,v}
 		// console.log(hsv);
@@ -485,7 +548,7 @@ module.exports = class ColorPicker extends Component {
 		this.setState(stt, x=>{ this.tryForceUpdate(); this.renderDiscs(); })
 		// this.setState({currentColor:hsv2Hex(hsv)}, x=>this.tryForceUpdate())
 		this.props.onColorChange(hsv2Hex(hsv))
-		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(hsv2Hex(hsv))
+		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv))
 		let anims = []
 		if(who_hs||!specific) anims.push(//{//
 			Animated.spring(this.panX, { toValue: left, useNativeDriver: false, friction: 90 }),//.start()//
@@ -502,8 +565,10 @@ module.exports = class ColorPicker extends Component {
 	// 	if(color !== this.props.color) this.animate(color)
 	// }
 	componentDidUpdate(prevProps) {
-		const { color } = this.props
-		if(color !== prevProps.color) this.animate(color)
+		const { color, whitesMode } = this.props
+		if((typeof color == 'string') && color !== prevProps.color) this.animate(color)
+		if((typeof color != 'string') && (color.h !== prevProps.color.h || color.s !== prevProps.color.s || color.v !== prevProps.color.v)) this.animate(this.parseIncomingColor(color))
+		if(whitesMode !== prevProps.whitesMode) this.animate(this.parseIncomingColor(color))
 	}
 	revert() {
 		if(this.mounted) this.animate(this.props.color)
@@ -513,10 +578,12 @@ module.exports = class ColorPicker extends Component {
 	}
 	renderSwatches () {
 		this.swatches = this.props.palette.map((c,i) => (
-			<View style={[ss.swatch,{backgroundColor:c}]} key={'S'+i} hitSlop={this.props.swatchesHitSlop}>
-				<TouchableWithoutFeedback onPress={x=>this.onSwatchPress(c,i)} hitSlop={this.props.swatchesHitSlop}>
-					<Animated.View style={[ss.swatchTouch,{backgroundColor:c,transform:[{scale:this.swatchAnim[i].interpolate({inputRange:[0,0.5,1],outputRange:[0.666,1,0.666]})}]}]} />
-				</TouchableWithoutFeedback>
+			<View style={[ss.swatchContainer]} key={'SC'+i}>
+				<View style={[ss.swatch,{backgroundColor:c || '#ffffff', borderColor: '#838388', borderWidth: c ? 1 : 0}]} key={'S'+i} hitSlop={this.props.swatchesHitSlop}>
+					<TouchableWithoutFeedback onPress={x=>this.onSwatchPress(c,i)} hitSlop={this.props.swatchesHitSlop}>
+						<Animated.View style={[ss.swatchTouch,{backgroundColor:c,transform:[{scale:this.swatchAnim[i].interpolate({inputRange:[0,0.5,1],outputRange:[0.666,1,0.666]})}]}]} />
+					</TouchableWithoutFeedback>
+				</View>
 			</View>
 		))
 	}
@@ -554,9 +621,9 @@ module.exports = class ColorPicker extends Component {
 			width: thumbSize,
 			height: thumbSize,
 			borderRadius: thumbSize / 2,
-			backgroundColor: this.props.shadeWheelThumb === true ? hsv: hex,
+			// backgroundColor: this.props.shadeWheelThumb === true ? hsv: hex,
 			transform: [{translateX:-thumbSize/2},{translateY:-thumbSize/2}],
-			left: this.panX,
+			left: this.props.whitesMode ? this.wheelSize/2 : this.panX,
 			top: this.panY,
 			opacity,
 			////
@@ -569,7 +636,6 @@ module.exports = class ColorPicker extends Component {
 			left: row?0:this.slideX,
 			top: row?this.slideY:0,
 			// transform: [row?{translateX:8}:{translateY:8}],
-			backgroundColor: this.props.shadeSliderThumb === true ? hsv: hex,
 			borderRadius: sliderSize/2,
 			height: sliderSize,
 			width: sliderSize,
@@ -580,12 +646,12 @@ module.exports = class ColorPicker extends Component {
 			height:row?'100%':sliderSize,
 			marginLeft:row?gapSize:0,
 			marginTop:row?0:gapSize,
-			borderRadius:sliderSize/2,
+			// borderRadius:sliderSize/2,
 		}
 		const swatchStyle = {
 			flexDirection:row?'column':'row',
 			width:row?20:'100%',
-			height:row?'100%':20,
+			height:row?'100%':86,
 			marginLeft:row?margin:0,
 			marginTop:row?0:margin,
 		}
@@ -602,16 +668,14 @@ module.exports = class ColorPicker extends Component {
 				{ !swatchesOnly && <View style={[ss.wheel]} key={'$1'} onLayout={this.onSquareLayout}>
 					{ this.wheelWidth>0 && <View style={[{padding:thumbSize/2,width:this.wheelWidth,height:this.wheelWidth}]}>
 						<View style={[ss.wheelWrap]}>
-							<Image style={ss.wheelImg} source={srcWheel} />
+							<Image style={ss.wheelImg} source={this.props.whitesMode ? srcWhitesWheel : srcWheel} />
 							<Animated.View style={[ss.wheelThumb,wheelThumbStyle,Elevations[4],{pointerEvents:'none'}]} />
 							<View style={[ss.cover]} onLayout={this.onWheelLayout} {...wheelPanHandlers} ref={r => { this.wheel = r }}></View>
 						</View>
 					</View> }
 				</View> }
 				{ !swatchesOnly && !sliderHidden && (discrete ? <View style={[ss.swatches,swatchStyle]} key={'$2'}>{ this.disc }</View> : <View style={[ss.slider,sliderStyle]} key={'$2'}>
-					<View style={[ss.grad,{backgroundColor:hex}]}>
-						<Image style={ss.sliderImg} source={row?srcSliderRotated:srcSlider} resizeMode="stretch" />
-					</View>
+					<View style={[ss.grad]}></View>
 					<Animated.View style={[ss.sliderThumb,sliderThumbStyle,Elevations[4],{pointerEvents:'none'}]} />
 					<View style={[ss.cover]} onLayout={this.onSliderLayout} {...sliderPanHandlers} ref={r => { this.slider = r }}></View>
 				</View>) }
@@ -626,20 +690,16 @@ const ss = StyleSheet.create({
 		flex: 1,
 		flexDirection: 'column',
 		alignItems: 'center',
-		justifyContent: 'space-between',
+		justifyContent: 'flex-start',
 		overflow: 'visible',
 		// aspectRatio: 1,
 		// backgroundColor: '#ffcccc',
 	},
 	wheel: {
-		flex: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-		position: 'relative',
+		// flex: 1,
+		// position: 'relative',
 		overflow: 'visible',
-		width: '100%',
-		minWidth: 200,
-		minHeight: 200,
+		minWidth: '80%',
 		// aspectRatio: 1,
 		// backgroundColor: '#ffccff',
 	},
@@ -655,14 +715,9 @@ const ss = StyleSheet.create({
 	},
 	wheelThumb: {
 		position: 'absolute',
-		backgroundColor: '#EEEEEE',
-		borderWidth: 3,
-		borderColor: '#EEEEEE',
+		// backgroundColor: '#EEEEEE',
+		borderWidth: 1,
 		elevation: 4,
-		shadowColor: 'rgb(46, 48, 58)',
-		shadowOffset: {width: 0, height: 2},
-		shadowOpacity: 0.8,
-		shadowRadius: 2,
 	},
 	cover: {
 		position: 'absolute',
@@ -673,53 +728,58 @@ const ss = StyleSheet.create({
 		// backgroundColor: '#ccccff88',
 	},
 	slider: {
-		width: '100%',
-		// height: 32,
-		marginTop: 16,
-		// overflow: 'hidden',
-		flexDirection: 'column-reverse',
-		// elevation: 4,
+		// position: 'absolute',
+		left: 30,
+		paddingHorizontal: 30,
+		elevation: 4,
 		// backgroundColor: '#ccccff',
-	},
-	sliderImg: {
-		width: '100%',
-		height: '100%',
 	},
 	sliderThumb: {
 		position: 'absolute',
 		top: 0,
 		left: 0,
-		borderWidth: 2,
+		borderWidth: 1,
 		borderColor: '#EEEEEE',
+		backgroundColor: '#FFFFFF',
 		elevation: 4,
 		// backgroundColor: '#f00',
 	},
 	grad: {
-		borderRadius: 100,
-		overflow: "hidden",
-		height: '100%',
+		position: 'absolute',
+		top: '50%',
+		left: 0,
+		width: '100%',
+		height: 2,
+		backgroundColor: '#838388',
 	},
 	swatches: {
 		width: '100%',
 		flexDirection: 'row',
 		justifyContent: 'space-between',
+		flexWrap: 'wrap',
 		marginTop: 16,
 		// padding: 16,
+		overflow: 'hidden',
+	},
+	swatchContainer: {
+		flexBasis: '20%',
+		alignItems: 'center'
 	},
 	swatch: {
-		width: 20,
-		height: 20,
-		borderRadius: 10,
+		width: 35,
+		height: 35,
+		borderRadius: 35,
+		marginBottom: 16,
 		// borderWidth: 1,
 		borderColor: '#8884',
 		alignItems: 'center',
 		justifyContent: 'center',
-		overflow: 'visible',
+		overflow: 'visible'
 	},
 	swatchTouch: {
-		width: 30,
-		height: 30,
-		borderRadius: 15,
+		width: 35,
+		height: 35,
+		borderRadius: 35,
 		backgroundColor: '#f004',
 		overflow: 'hidden',
 	},
