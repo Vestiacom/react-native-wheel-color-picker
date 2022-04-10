@@ -48,6 +48,8 @@ export interface ColorPickerProps extends React.Props<ColorPicker> {
   onColorChange?: (color: string) => void,
   /** Callback function providing final color when user stops dragging slider/wheel */
   onColorChangeComplete?: (color: {hsv: {h: number, s: number, v: number}, hex: string}) => void,
+  /** Callback function for long press on the swatch item */
+  onSwatchLongPress?: (color: string, idx: number) => void,
 }
 
 declare class ColorPicker extends React.Component<ColorPickerProps, any> {
