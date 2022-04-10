@@ -248,9 +248,10 @@ module.exports = class ColorPicker extends Component {
 			const {radius} = this.polar(nativeEvent)
 			const {hsv} = this.state
 			const {h,s,v} = hsv
+			const {left, top} = this.cartesian(h, s / 100)
 			if (!this.props.noSnap && radius <= 0.10 && radius >= 0) this.animate('#ffffff', 'hs', false, true)
 			if (!this.props.noSnap && radius >= 0.95 && radius <= 1) this.animate(this.state.currentColor, 'hs', true)
-			if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv))
+			if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
 			this.setState({currentColor:this.state.currentColor}, x=>this.renderDiscs())
 		},
 	})
@@ -285,9 +286,10 @@ module.exports = class ColorPicker extends Component {
 			const {hsv} = this.state
 			const {h,s,v} = hsv
 			const ratio = this.ratio(nativeEvent)
+			const {left, top} = this.cartesian(h, s / 100)
 			if (!this.props.noSnap && ratio <= 0.05 && ratio >= 0) this.animate(this.state.currentColor, 'v', false)
 			if (!this.props.noSnap && ratio >= 0.95 && ratio <= 1) this.animate(this.state.currentColor, 'v', true)
-			if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv))
+			if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
 		},
 	})
 	constructor (props) {
@@ -342,6 +344,7 @@ module.exports = class ColorPicker extends Component {
 		this.mounted = false;
 	}
 	onSwatchPress = (c,i) => {
+		if(!c) return;
 		this.swatchAnim[i].stopAnimation()
 		Animated.timing(this.swatchAnim[i], {
 			toValue: 1,
@@ -382,7 +385,12 @@ module.exports = class ColorPicker extends Component {
 			this.wheelSize = width
 			// this.panX.setOffset(-width/2)
 			// this.panY.setOffset(-width/2)
-			this.update(this.state.currentColor)
+			if(!this.state.currentColor) {
+				this.panX = new Animated.Value(width/2)
+				this.panY = new Animated.Value(width/2)
+			} else {
+				this.update(this.state.currentColor)
+			}
 			this.setState({wheelOpacity:1})
 		})
 	}
@@ -456,7 +464,7 @@ module.exports = class ColorPicker extends Component {
 			return hsv
 		}
 	}
-	prepareFinalHsvColor (hsv) {
+	prepareFinalHsvColor (hsv, top) {
 		if(this.props.whitesMode) {
 			const tempRange = this.props.maxTemperature - this.props.minTemperature;
 			let rgb = {
@@ -464,11 +472,7 @@ module.exports = class ColorPicker extends Component {
 				g: 0,
 				b: 0
 			}
-			if(hsv.h >= 0) {
-				rgb = kelvinToRgb(this.props.minTemperature + tempRange/2 + hsv.s * (tempRange/2 / 100));
-			} else {
-				rgb = kelvinToRgb(this.props.minTemperature + (100 - hsv.s) * (tempRange/2 / 100));
-			}
+			rgb = kelvinToRgb(this.props.minTemperature + (this.wheelSize - top) * (tempRange / this.wheelSize));
 			const currHsv = {...rgb2Hsv(rgb.r, rgb.g, rgb.b), v: Math.round(hsv.v)};
 			return {hsv: currHsv, hex: hsv2Hex(currHsv.h, currHsv.s, currHsv.v)};
 		} else {
@@ -518,7 +522,7 @@ module.exports = class ColorPicker extends Component {
 		this.setState(stt, x=>{ this.tryForceUpdate(); this.renderDiscs(); })
 		// this.setState({currentColor:hsv2Hex(hsv)}, x=>this.tryForceUpdate())
 		this.props.onColorChange(hsv2Hex(hsv))
-		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv))
+		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
 		if(who_hs||!specific) {
 			this.panY.setValue(top)// - this.props.thumbSize / 2)
 			this.panX.setValue(left)// - this.props.thumbSize / 2)
@@ -548,7 +552,7 @@ module.exports = class ColorPicker extends Component {
 		this.setState(stt, x=>{ this.tryForceUpdate(); this.renderDiscs(); })
 		// this.setState({currentColor:hsv2Hex(hsv)}, x=>this.tryForceUpdate())
 		this.props.onColorChange(hsv2Hex(hsv))
-		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv))
+		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
 		let anims = []
 		if(who_hs||!specific) anims.push(//{//
 			Animated.spring(this.panX, { toValue: left, useNativeDriver: false, friction: 90 }),//.start()//
@@ -623,7 +627,7 @@ module.exports = class ColorPicker extends Component {
 			borderRadius: thumbSize / 2,
 			// backgroundColor: this.props.shadeWheelThumb === true ? hsv: hex,
 			transform: [{translateX:-thumbSize/2},{translateY:-thumbSize/2}],
-			left: this.props.whitesMode ? this.wheelSize/2 : this.panX,
+			left: this.props.whitesMode ? new Animated.Value(this.wheelSize/2) : this.panX,
 			top: this.panY,
 			opacity,
 			////
