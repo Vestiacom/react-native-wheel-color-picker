@@ -746,9 +746,12 @@ const ss = StyleSheet.create({
 		left: 0,
 		backgroundColor: '#FFFFFF',
 		shadowColor: '#000',
-		shadowOpacity: 0.07,
+		shadowOpacity: 0.2,
 		shadowRadius: 2,
-		transform: [{ rotate: "180deg" }]
+		shadowOffset: {
+			width: 0,
+			height: 2
+		}
 	},
 	grad: {
 		position: 'absolute',
