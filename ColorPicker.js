@@ -682,7 +682,7 @@ module.exports = class ColorPicker extends Component {
 				</View> }
 				{ !swatchesOnly && !sliderHidden && (discrete ? <View style={[ss.swatches,swatchStyle]} key={'$2'}>{ this.disc }</View> : <View style={[ss.slider,sliderStyle]} key={'$2'}>
 					<View style={[ss.grad]}></View>
-					<Animated.View style={[ss.sliderThumb,sliderThumbStyle,Elevations[4],{pointerEvents:'none'}]} />
+					<Animated.View style={[ss.sliderThumb,sliderThumbStyle,{pointerEvents:'none'}]} />
 					<View style={[ss.cover]} onLayout={this.onSliderLayout} {...sliderPanHandlers} ref={r => { this.slider = r }}></View>
 				</View>) }
 				{ swatches && swatchesLast && <View style={[ss.swatches,swatchStyle]} key={'SW'}>{ this.swatches }</View> }
@@ -744,18 +744,18 @@ const ss = StyleSheet.create({
 		position: 'absolute',
 		top: 0,
 		left: 0,
-		borderWidth: 1,
-		borderColor: '#EEEEEE',
 		backgroundColor: '#FFFFFF',
-		elevation: 4,
-		// backgroundColor: '#f00',
+		shadowColor: '#000',
+		shadowOpacity: 0.07,
+		shadowRadius: 2,
+		transform: [{ rotate: "180deg" }]
 	},
 	grad: {
 		position: 'absolute',
 		top: '50%',
 		left: 0,
 		width: '100%',
-		height: 2,
+		height: 2.3,
 		backgroundColor: '#838388',
 	},
 	swatches: {
