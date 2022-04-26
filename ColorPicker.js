@@ -393,8 +393,10 @@ module.exports = class ColorPicker extends Component {
 			}
 			this.setState({wheelOpacity:1})
 		})
+		this.onSliderLayout()
 	}
 	onSliderLayout = (e) => {
+		if(!this.slider) return;
 		this.slider.measureInWindow((x, y, width, height) => {
 			this.sliderMeasure = {x, y, width, height}
 			this.sliderLength = this.props.row ? height-width : width-height
