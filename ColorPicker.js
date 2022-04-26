@@ -344,7 +344,7 @@ module.exports = class ColorPicker extends Component {
 		this.mounted = false;
 	}
 	onSwatchPress = (c,i) => {
-		if(!c) return;
+		if(!c || c === '') return;
 		this.swatchAnim[i].stopAnimation()
 		Animated.timing(this.swatchAnim[i], {
 			toValue: 1,
@@ -353,7 +353,7 @@ module.exports = class ColorPicker extends Component {
 		}).start(x=>{
 			this.swatchAnim[i].setValue(0)
 		})
-		this.animate(c)
+		this.animate(c, null, null, null, true)
 	}
 	onDiscPress = (c,i) => {
 		this.discAnim[i].stopAnimation()
@@ -532,7 +532,7 @@ module.exports = class ColorPicker extends Component {
 			this.slideY.setValue(range)
 		}
 	}
-	animate = (color, who, max, force) => {
+	animate = (color, who, max, force, runCallbackOnEnd) => {
 		color = expandColor(color);
 		const specific = (typeof who == 'string'), who_hs = (who=='hs'), who_v = (who=='v')
 		let {h, s, v} = (typeof color == 'string') ? hex2Hsv(color) : color, stt = {}
@@ -552,7 +552,7 @@ module.exports = class ColorPicker extends Component {
 		this.setState(stt, x=>{ this.tryForceUpdate(); this.renderDiscs(); })
 		// this.setState({currentColor:hsv2Hex(hsv)}, x=>this.tryForceUpdate())
 		this.props.onColorChange(hsv2Hex(hsv))
-		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
+		if (this.props.onColorChangeComplete && runCallbackOnEnd) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
 		let anims = []
 		if(who_hs||!specific) anims.push(//{//
 			Animated.spring(this.panX, { toValue: left, useNativeDriver: false, friction: 90 }),//.start()//
@@ -584,7 +584,7 @@ module.exports = class ColorPicker extends Component {
 		this.swatches = this.props.palette.map((c,i) => (
 			<View style={[ss.swatchContainer]} key={'SC'+i}>
 				<View style={[ss.swatch,{backgroundColor:c || '#ffffff', borderColor: '#838388', borderWidth: c ? 1 : 0}]} key={'S'+i} hitSlop={this.props.swatchesHitSlop}>
-					<TouchableWithoutFeedback onPress={x=>this.onSwatchPress(c,i)} onLongPress={x=>this.props.onSwatchLongPress(c,i)} hitSlop={this.props.swatchesHitSlop}>
+					<TouchableWithoutFeedback onPress={x=>this.onSwatchPress(c,i)} onLongPress={x=>{this.props.onSwatchLongPress(c,i); this.onSwatchPress(c,i);}} hitSlop={this.props.swatchesHitSlop}>
 						<Animated.View style={[ss.swatchTouch,{backgroundColor:c,transform:[{scale:this.swatchAnim[i].interpolate({inputRange:[0,0.5,1],outputRange:[0.666,1,0.666]})}]}]} />
 					</TouchableWithoutFeedback>
 				</View>
