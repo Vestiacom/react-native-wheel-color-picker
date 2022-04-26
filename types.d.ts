@@ -50,6 +50,8 @@ export interface ColorPickerProps extends React.Props<ColorPicker> {
   onColorChangeComplete?: (color: {hsv: {h: number, s: number, v: number}, hex: string}) => void,
   /** Callback function for long press on the swatch item */
   onSwatchLongPress?: (color: string, idx: number) => void,
+  /** Callback function for press on the swatch item */
+  onSwatchPress?: (color: string, idx: number) => void,
 }
 
 declare class ColorPicker extends React.Component<ColorPickerProps, any> {

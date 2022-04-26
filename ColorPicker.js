@@ -584,7 +584,7 @@ module.exports = class ColorPicker extends Component {
 		this.swatches = this.props.palette.map((c,i) => (
 			<View style={[ss.swatchContainer]} key={'SC'+i}>
 				<View style={[ss.swatch,{backgroundColor:c || '#ffffff', borderColor: '#838388', borderWidth: c ? 1 : 0}]} key={'S'+i} hitSlop={this.props.swatchesHitSlop}>
-					<TouchableWithoutFeedback onPress={x=>this.onSwatchPress(c,i)} onLongPress={x=>{this.props.onSwatchLongPress(c,i); this.onSwatchPress(c,i);}} hitSlop={this.props.swatchesHitSlop}>
+					<TouchableWithoutFeedback onPress={x=>{this.onSwatchPress(c,i); this.props.onSwatchPress && this.props.onSwatchPress(c,i);}} onLongPress={x=>(this.props.onSwatchLongPress && this.props.onSwatchLongPress(c,i))} hitSlop={this.props.swatchesHitSlop}>
 						<Animated.View style={[ss.swatchTouch,{backgroundColor:c,transform:[{scale:this.swatchAnim[i].interpolate({inputRange:[0,0.5,1],outputRange:[0.666,1,0.666]})}]}]} />
 					</TouchableWithoutFeedback>
 				</View>
