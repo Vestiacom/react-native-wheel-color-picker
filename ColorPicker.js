@@ -485,6 +485,7 @@ module.exports = class ColorPicker extends Component {
 
 	updateHueSaturation = ({nativeEvent}) => {
 		const {deg, radius} = this.polar(nativeEvent), h = deg, s = 100 * radius, v = this.color.v
+		const {top} = this.cartesian(h, s / 100)
 		// if(radius > 1 ) return
 		const hsv = {h,s,v}// v: 100} // causes bug
 		if(this.props.autoResetSlider === true) {
@@ -495,15 +496,16 @@ module.exports = class ColorPicker extends Component {
 		const currentColor = hsv2Hex(hsv)
 		this.color = hsv
 		this.setState({hsv, currentColor, hueSaturation: hsv2Hex(this.color.h,this.color.s,100)})
-		this.props.onColorChange(hsv2Hex(hsv))
+		this.props.onColorChange(this.prepareFinalHsvColor(hsv, top))
 	}
 	updateValue = ({nativeEvent}, val) => {
 		const {h,s} = this.color, v = (typeof val == 'number') ? val : 100 * this.ratio(nativeEvent)
+		const {top} = this.cartesian(h, s / 100)
 		const hsv = {h,s,v}
 		const currentColor = hsv2Hex(hsv)
 		this.color = hsv
 		this.setState({hsv, currentColor, hueSaturation: hsv2Hex(this.color.h,this.color.s,100)})
-		this.props.onColorChange(hsv2Hex(hsv))
+		this.props.onColorChange(this.prepareFinalHsvColor(hsv, top))
 	}
 	update = (color, who, max, force) => {
 		color = expandColor(color);
@@ -523,7 +525,7 @@ module.exports = class ColorPicker extends Component {
 		stt.currentColor = hsv2Hex(hsv)
 		this.setState(stt, x=>{ this.tryForceUpdate(); this.renderDiscs(); })
 		// this.setState({currentColor:hsv2Hex(hsv)}, x=>this.tryForceUpdate())
-		this.props.onColorChange(hsv2Hex(hsv))
+		this.props.onColorChange(this.prepareFinalHsvColor(hsv, top))
 		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
 		if(who_hs||!specific) {
 			this.panY.setValue(top)// - this.props.thumbSize / 2)
@@ -553,7 +555,7 @@ module.exports = class ColorPicker extends Component {
 		stt.currentColor = hsv2Hex(hsv)
 		this.setState(stt, x=>{ this.tryForceUpdate(); this.renderDiscs(); })
 		// this.setState({currentColor:hsv2Hex(hsv)}, x=>this.tryForceUpdate())
-		this.props.onColorChange(hsv2Hex(hsv))
+		this.props.onColorChange(this.prepareFinalHsvColor(hsv, top))
 		if (this.props.onColorChangeComplete && runCallbackOnEnd) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
 		let anims = []
 		if(who_hs||!specific) anims.push(//{//
@@ -566,10 +568,10 @@ module.exports = class ColorPicker extends Component {
 		)//}//
 		Animated.parallel(anims).start()
 	}
-	// componentWillReceiveProps(nextProps) {
-	// 	const { color } = nextProps
-	// 	if(color !== this.props.color) this.animate(color)
-	// }
+	componentWillReceiveProps(nextProps) {
+		const { palette } = nextProps
+		if(JSON.stringify(this.props.palette) !== JSON.stringify(palette)) this.renderSwatches()
+	}
 	componentDidUpdate(prevProps) {
 		const { color, whitesMode } = this.props
 		if((typeof color == 'string') && color !== prevProps.color) this.animate(color)
@@ -585,9 +587,9 @@ module.exports = class ColorPicker extends Component {
 	renderSwatches () {
 		this.swatches = this.props.palette.map((c,i) => (
 			<View style={[ss.swatchContainer]} key={'SC'+i}>
-				<View style={[ss.swatch,{backgroundColor:c || '#ffffff', borderColor: '#838388', borderWidth: c ? 1 : 0}]} key={'S'+i} hitSlop={this.props.swatchesHitSlop}>
+				<View style={[ss.swatch,{backgroundColor:c || '#fff', borderColor: '#838388', borderWidth: c ? 1 : 0}]} key={'S'+i} hitSlop={this.props.swatchesHitSlop}>
 					<TouchableWithoutFeedback onPress={x=>{this.onSwatchPress(c,i); this.props.onSwatchPress && this.props.onSwatchPress(c,i);}} onLongPress={x=>(this.props.onSwatchLongPress && this.props.onSwatchLongPress(c,i))} hitSlop={this.props.swatchesHitSlop}>
-						<Animated.View style={[ss.swatchTouch,{backgroundColor:c,transform:[{scale:this.swatchAnim[i].interpolate({inputRange:[0,0.5,1],outputRange:[0.666,1,0.666]})}]}]} />
+						<Animated.View style={[ss.swatchTouch,{backgroundColor:c || '#fff',transform:[{scale:this.swatchAnim[i].interpolate({inputRange:[0,0.5,1],outputRange:[0.666,1,0.666]})}]}]} />
 					</TouchableWithoutFeedback>
 				</View>
 			</View>
