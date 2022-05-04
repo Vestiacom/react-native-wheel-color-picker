@@ -334,7 +334,7 @@ module.exports = class ColorPicker extends Component {
 		)
 		this.swatchAnim = props.palette.map((c,i) => (new Animated.Value(0)))
 		this.discAnim = (`1`).repeat(props.discreteLength).split('').map((c,i) => (new Animated.Value(0)))
-		this.renderSwatches()
+		this.renderSwatches(this.props.palette)
 		this.renderDiscs()
 	}
 	componentDidMount() {
@@ -570,7 +570,7 @@ module.exports = class ColorPicker extends Component {
 	}
 	componentWillReceiveProps(nextProps) {
 		const { palette } = nextProps
-		if(JSON.stringify(this.props.palette) !== JSON.stringify(palette)) this.renderSwatches()
+		if(JSON.stringify(this.props.palette) !== JSON.stringify(palette)) this.renderSwatches(palette)
 	}
 	componentDidUpdate(prevProps) {
 		const { color, whitesMode } = this.props
@@ -584,8 +584,8 @@ module.exports = class ColorPicker extends Component {
 	tryForceUpdate () {
 		if(this.mounted) this.forceUpdate()
 	}
-	renderSwatches () {
-		this.swatches = this.props.palette.map((c,i) => (
+	renderSwatches (palette) {
+		this.swatches = palette.map((c,i) => (
 			<View style={[ss.swatchContainer]} key={'SC'+i}>
 				<View style={[ss.swatch,{backgroundColor:c || '#fff', borderColor: '#838388', borderWidth: c ? 1 : 0}]} key={'S'+i} hitSlop={this.props.swatchesHitSlop}>
 					<TouchableWithoutFeedback onPress={x=>{this.onSwatchPress(c,i); this.props.onSwatchPress && this.props.onSwatchPress(c,i);}} onLongPress={x=>(this.props.onSwatchLongPress && this.props.onSwatchLongPress(c,i))} hitSlop={this.props.swatchesHitSlop}>
