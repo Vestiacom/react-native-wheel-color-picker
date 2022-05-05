@@ -525,8 +525,10 @@ module.exports = class ColorPicker extends Component {
 		stt.currentColor = hsv2Hex(hsv)
 		this.setState(stt, x=>{ this.tryForceUpdate(); this.renderDiscs(); })
 		// this.setState({currentColor:hsv2Hex(hsv)}, x=>this.tryForceUpdate())
-		this.props.onColorChange(this.prepareFinalHsvColor(hsv, top))
-		if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
+		if(!this.props.whitesMode || this.wheelSize > 0) {
+			this.props.onColorChange(this.prepareFinalHsvColor(hsv, top))
+			if (this.props.onColorChangeComplete) this.props.onColorChangeComplete(this.prepareFinalHsvColor(hsv, top))
+		}
 		if(who_hs||!specific) {
 			this.panY.setValue(top)// - this.props.thumbSize / 2)
 			this.panX.setValue(left)// - this.props.thumbSize / 2)
