@@ -381,6 +381,9 @@ module.exports = class ColorPicker extends Component {
 		* but in measureInWindow they are relative to the window
 		*/
 		this.wheel.measureInWindow((x, y, width, height) => {
+			width = width > 0 ? width : 300;
+			height = height > 0 ? height : 300;
+
 			this.wheelMeasure = {x, y, width, height}
 			this.wheelSize = width
 			// this.panX.setOffset(-width/2)
