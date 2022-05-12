@@ -185,13 +185,13 @@ module.exports = class ColorPicker extends Component {
 	color = {h:0,s:0,v:100}
 	slideX = new Animated.Value(0)
 	slideY = new Animated.Value(0)
-	panX = new Animated.Value(30)
-	panY = new Animated.Value(30)
+	panX = new Animated.Value(150)
+	panY = new Animated.Value(150)
 	sliderLength = 0
 	wheelSize = 0
 	sliderMeasure = {}
 	wheelMeasure = {}
-	wheelWidth = 0
+	wheelWidth = 300
 	static defaultProps = {
 		whitesMode: false,
 		row: false, // use row or vertical layout
