@@ -681,7 +681,7 @@ module.exports = class ColorPicker extends Component {
 				{ !swatchesOnly && <View style={[ss.wheel]} key={'$1'} onLayout={this.onSquareLayout}>
 					{ this.wheelWidth>0 && <View style={[{padding:thumbSize/2,width:this.wheelWidth,height:this.wheelWidth}]}>
 						<View style={[ss.wheelWrap]}>
-							<Image style={ss.wheelImg} source={this.props.whitesMode ? srcWhitesWheel : srcWheel} />
+							<Image style={ss.wheelImg} source={this.props.whitesMode ? srcWhitesWheel : srcWheel} width={this.wheelSize} height={this.wheelSize}/>
 							<Animated.View style={[ss.wheelThumb,wheelThumbStyle,Elevations[4],{pointerEvents:'none'}]} />
 							<View style={[ss.cover]} onLayout={this.onWheelLayout} {...wheelPanHandlers} ref={r => { this.wheel = r }}></View>
 						</View>
