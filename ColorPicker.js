@@ -187,7 +187,7 @@ module.exports = class ColorPicker extends Component {
 	slideY = new Animated.Value(0)
 	panX = new Animated.Value(150)
 	panY = new Animated.Value(150)
-	sliderLength = 0
+	sliderLength = 330
 	wheelSize = 0
 	sliderMeasure = {}
 	wheelMeasure = {}
@@ -401,6 +401,9 @@ module.exports = class ColorPicker extends Component {
 	onSliderLayout = (e) => {
 		if(!this.slider) return;
 		this.slider.measureInWindow((x, y, width, height) => {
+			width = width > 0 ? width : 330;
+			height = height > 0 ? height : this.props.sliderSize;
+
 			this.sliderMeasure = {x, y, width, height}
 			this.sliderLength = this.props.row ? height-width : width-height
 			// this.slideX.setOffset(-width/2)
