@@ -482,7 +482,7 @@ module.exports = class ColorPicker extends Component {
 			}
 			rgb = kelvinToRgb(this.props.minTemperature + (this.wheelSize - top) * (tempRange / this.wheelSize));
 			const currHsv = {...rgb2Hsv(rgb.r, rgb.g, rgb.b), v: Math.round(hsv.v)};
-			return {hsv: currHsv, hex: hsv2Hex(currHsv.h, currHsv.s, currHsv.v)};
+			return {hsv: currHsv, hex: hsv2Hex(currHsv.h, currHsv.s, currHsv.v), monoIndex: Math.ceil((top / this.wheelSize) * 18)};
 		} else {
 			const hex = hsv2Hex(hsv.h, hsv.s, hsv.v)
 			return {hsv: hex2Hsv(hex), hex};
