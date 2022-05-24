@@ -685,7 +685,7 @@ module.exports = class ColorPicker extends Component {
 					{ this.wheelWidth>0 && <View style={[{padding:thumbSize/2,width:this.wheelWidth,height:this.wheelWidth}]}>
 						<View style={[ss.wheelWrap]}>
 							<Image style={ss.wheelImg} source={this.props.whitesMode ? srcWhitesWheel : srcWheel} width={this.wheelSize} height={this.wheelSize}/>
-							<Animated.View style={[ss.wheelThumb,wheelThumbStyle,Elevations[4],{pointerEvents:'none'}]} />
+							<Animated.View style={[ss.wheelThumb,wheelThumbStyle,{pointerEvents:'none'}]} />
 							<View style={[ss.cover]} onLayout={this.onWheelLayout} {...wheelPanHandlers} ref={r => { this.wheel = r }}></View>
 						</View>
 					</View> }
@@ -733,7 +733,6 @@ const ss = StyleSheet.create({
 		position: 'absolute',
 		// backgroundColor: '#EEEEEE',
 		borderWidth: 1,
-		elevation: 4,
 	},
 	cover: {
 		position: 'absolute',
